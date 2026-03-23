@@ -4,9 +4,9 @@ on:
   push:
     branches:
       - develop
-  schedule:
-    # Run every 5 minutes
-    - cron: "*/5 * * * *"
+  # schedule:
+  #   # Run every 5 minutes
+  #   - cron: "*/5 * * * *"
 
 jobs:
   build-deploy:
@@ -28,4 +28,6 @@ jobs:
         run: npm run build
 
       - name: Run the script
+        env:
+          RUN_AS_CRON: "true"
         run: node dist/index.js

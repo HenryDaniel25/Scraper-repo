@@ -33,13 +33,39 @@ function mainProcess() {
   generatePDF(data);
 }
 
-// Express route
-app.get("/", (req, res) => {
+async function runWorkflow() {
+  console.log("Starting Scraper Workflow...");
   const data = generateDummyData();
-  res.json(data);
-});
+  // In the future, this is where you'd call:
+  // await uploadToDynamo(data);
+  // await uploadToS3(pdfPath);
+  // generatePDF(data);
+  console.log("Workflow Complete.");
+}
+
+if (process.env.RUN_AS_CRON === "true") {
+  // Run once and exit (for GitHub Actions / Scheduled Tasks)
+  runWorkflow()
+    .then(() => process.exit(0))
+    .catch(() => process.exit(1));
+} else {
+  // Start the server (for local dev / persistent Docker containers)
+  app.get("/", (req, res) => {
+    const data = generateDummyData();
+    res.json(data);
+  });
+
+  app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+}
+
+// Express route
+
+// app.get("/", (req, res) => {
+//   const data = generateDummyData();
+//   res.json(data);
+// });
 
 // Run the main process every time script runs (GitHub Actions / Docker)
 // mainProcess();
 
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+// app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
