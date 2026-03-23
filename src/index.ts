@@ -12,8 +12,8 @@ function generateDummyData() {
     message: "Hello World",
     timestamp: new Date().toISOString(),
   };
-  fs.writeFileSync("data.json", JSON.stringify(data, null, 2));
-  console.log("JSON saved locally");
+  //   fs.writeFileSync("data.json", JSON.stringify(data, null, 2));
+  //   console.log("JSON saved locally");
   return data;
 }
 
@@ -40,6 +40,6 @@ app.get("/", (req, res) => {
 });
 
 // Run the main process every time script runs (GitHub Actions / Docker)
-mainProcess();
+// mainProcess();
 
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
