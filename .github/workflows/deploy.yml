@@ -1,0 +1,31 @@
+name: Node.js CI/CD
+
+on:
+  push:
+    branches:
+      - main
+  schedule:
+    # Run every 5 minutes
+    - cron: "*/5 * * * *"
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build TypeScript
+        run: npm run build
+
+      - name: Run the script
+        run: node dist/index.js

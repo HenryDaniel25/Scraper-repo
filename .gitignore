@@ -1,0 +1,20 @@
+# dependencies
+node_modules
+
+# environment
+.env
+
+# builds
+.build
+
+# serverless working directory
+.serverless
+
+# testing
+coverage/
+
+# history
+.history
+
+# Webstorm Workspace settings
+.idea
