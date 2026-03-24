@@ -1,76 +1,102 @@
 import fs from "fs";
+import path from "path";
 import PDFDocument from "pdfkit";
-
 import express, { Request, Response } from "express";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 
 const app = express();
+app.use(express.json());
+
 const PORT = process.env.PORT || 3000;
 
+// 🔹 S3 Config
+const s3 = new S3Client({
+  region: "us-east-2", // your region
+});
+
+const BUCKET_NAME = "demo-s3-amz-bucket";
+
+// Dummy data
 function generateDummyData() {
-  const data = {
+  return {
     message: "Hello World",
     timestamp: new Date().toISOString(),
   };
-  //   fs.writeFileSync("data.json", JSON.stringify(data, null, 2));
-  //   console.log("JSON saved locally");
-  return data;
 }
 
-// Dummy PDF generation
-function generatePDF(data: object) {
-  const doc = new PDFDocument();
-  doc.pipe(fs.createWriteStream("output.pdf"));
-  doc.text("Dummy PDF for Practice");
-  doc.text(JSON.stringify(data, null, 2));
-  doc.end();
-  console.log("PDF generated locally");
+// Generate PDF and return file path
+function generatePDF(data: object, filePath: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument();
+    const stream = fs.createWriteStream(filePath);
+
+    doc.pipe(stream);
+    doc.text("Dummy PDF for Practice\n\n");
+    doc.text(JSON.stringify(data, null, 2));
+    doc.end();
+
+    stream.on("finish", () => {
+      console.log("PDF generated");
+      resolve();
+    });
+
+    stream.on("error", reject);
+  });
 }
 
-// Main process
-function mainProcess() {
-  const data = generateDummyData();
-  generatePDF(data);
-}
+// Upload to S3
+async function uploadToS3(filePath: string, key: string) {
+  const fileStream = fs.createReadStream(filePath);
 
-async function runWorkflow() {
-  console.log("Starting Scraper Workflow...");
-  const data = generateDummyData();
-  // In the future, this is where you'd call:
-  // await uploadToDynamo(data);
-  // await uploadToS3(pdfPath);
-  // generatePDF(data);
-  console.log("Workflow Complete.");
-}
-
-if (process.env.RUN_AS_CRON === "true") {
-  // Run once and exit (for GitHub Actions / Scheduled Tasks)
-  runWorkflow()
-    .then(() => process.exit(0))
-    .catch(() => process.exit(1));
-} else {
-  // Start the server (for local dev / persistent Docker containers)
-  app.get("/", (req, res) => {
-    const data = generateDummyData();
-    console.log("output of dummy json", JSON.stringify(data));
-    console.log(data);
-    res.json(data);
+  const command = new PutObjectCommand({
+    Bucket: BUCKET_NAME,
+    Key: key,
+    Body: fileStream,
+    ContentType: "application/pdf",
   });
 
-  const port = Number(PORT);
+  await s3.send(command);
 
-  app.listen(port, "0.0.0.0", () =>
-    console.log(`Server running on port ${PORT}`),
-  );
+  return `https://${BUCKET_NAME}.s3.us-east-2.amazonaws.com/${key}`;
 }
 
-// Express route
+// 🔥 POST API
+app.post("/generate-pdf", async (req: Request, res: Response) => {
+  try {
+    const data = generateDummyData();
 
-// app.get("/", (req, res) => {
-//   const data = generateDummyData();
-//   res.json(data);
-// });
+    const fileName = `scrapper-PDF/output-${Date.now()}.pdf`;
+    const filePath = path.join("/tmp", `output-${Date.now()}.pdf`);
 
-// Run the main process every time script runs (GitHub Actions / Docker)
-// mainProcess();
+    // 1. Generate PDF
+    await generatePDF(data, filePath);
 
-// app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+    // 2. Upload to S3
+    const fileUrl = await uploadToS3(filePath, fileName);
+
+    // 3. Delete local file (cleanup)
+    fs.unlinkSync(filePath);
+
+    res.json({
+      message: "PDF uploaded successfully",
+      url: fileUrl,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Failed to generate/upload PDF" });
+  }
+});
+
+// Test route
+app.get("/", (req, res) => {
+  const data = generateDummyData();
+  console.log("output of dummy json", JSON.stringify(data));
+  console.log(data);
+  res.json(data);
+});
+
+const port = Number(PORT);
+
+app.listen(port, "0.0.0.0", () =>
+  console.log(`Server running on port ${PORT}`),
+);
