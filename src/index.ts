@@ -6,7 +6,6 @@ import express, { Request, Response } from "express";
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Dummy JSON data
 function generateDummyData() {
   const data = {
     message: "Hello World",
@@ -52,6 +51,8 @@ if (process.env.RUN_AS_CRON === "true") {
   // Start the server (for local dev / persistent Docker containers)
   app.get("/", (req, res) => {
     const data = generateDummyData();
+    console.log("output of dummy json", JSON.stringify(data));
+    console.log(data);
     res.json(data);
   });
 
