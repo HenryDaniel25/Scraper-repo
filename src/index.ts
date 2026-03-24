@@ -3,6 +3,8 @@ import path from "path";
 import PDFDocument from "pdfkit";
 import express, { Request, Response } from "express";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
 
 const app = express();
 app.use(express.json());
@@ -13,8 +15,12 @@ const PORT = process.env.PORT || 3000;
 const s3 = new S3Client({
   region: "us-east-2", // your region
 });
+const dynamoClient = new DynamoDBClient({
+  region: "us-east-2",
+});
 
 const BUCKET_NAME = "demo-s3-amz-bucket";
+const TABLE_NAME = "scrapper-table";
 
 // Dummy data
 function generateDummyData() {
@@ -22,6 +28,23 @@ function generateDummyData() {
     message: "Hello World",
     timestamp: new Date().toISOString(),
   };
+}
+
+const docClient = DynamoDBDocumentClient.from(dynamoClient);
+
+// Insert function
+async function uploadToDynamo(data: any) {
+  const params = {
+    TableName: TABLE_NAME,
+    Item: {
+      id: Date.now().toString(), // Primary key
+      message: data.message,
+      timestamp: data.timestamp,
+    },
+  };
+
+  await docClient.send(new PutCommand(params));
+  console.log("Data inserted into DynamoDB");
 }
 
 // Generate PDF and return file path
@@ -76,14 +99,18 @@ app.post("/generate-pdf", async (req: Request, res: Response) => {
 
     // 3. Delete local file (cleanup)
     fs.unlinkSync(filePath);
+    await uploadToDynamo(data);
 
     res.json({
-      message: "PDF uploaded successfully",
+      message: "PDF uploaded successfully & data uploaded to dynamo db",
       url: fileUrl,
+      data: data ?? {},
     });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: "Failed to generate/upload PDF" });
+    res
+      .status(500)
+      .json({ error: "Failed to generate/upload PDF or upload to dynamo" });
   }
 });
 
