@@ -26,8 +26,9 @@ const TABLE_NAME = "scrapper-table";
 function generateDummyData() {
   console.log("generated dummy data");
   return {
-    message: "Hello World",
+    message: "My Name is pravin",
     timestamp: new Date().toISOString(),
+    check: "testing the flow",
   };
 }
 
