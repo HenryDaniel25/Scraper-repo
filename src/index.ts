@@ -24,6 +24,7 @@ const TABLE_NAME = "scrapper-table";
 
 // Dummy data
 function generateDummyData() {
+  console.log("generated dummy data");
   return {
     message: "Hello World",
     timestamp: new Date().toISOString(),
@@ -42,7 +43,7 @@ async function uploadToDynamo(data: any) {
       timestamp: data.timestamp,
     },
   };
-
+  console.log("generated params", JSON.stringify(params));
   await docClient.send(new PutCommand(params));
   console.log("Data inserted into DynamoDB");
 }
@@ -93,14 +94,16 @@ app.post("/generate-pdf", async (req: Request, res: Response) => {
 
     // 1. Generate PDF
     await generatePDF(data, filePath);
-
+    console.log("generate pdf succeeded");
     // 2. Upload to S3
     const fileUrl = await uploadToS3(filePath, fileName);
+    console.log("upload to s3 succeeded");
 
     // 3. Delete local file (cleanup)
     fs.unlinkSync(filePath);
+    console.log("after the fs unlink sync");
     await uploadToDynamo(data);
-
+    console.log("after upload to dynamo data", JSON.stringify(data));
     res.json({
       message: "PDF uploaded successfully & data uploaded to dynamo db",
       url: fileUrl,
